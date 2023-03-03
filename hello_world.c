@@ -3,7 +3,7 @@
 #include <time.h>
 #include<string.h>
 
-const int popSize = 2;
+const int popSize = 3;
 const int netSize = 5;
 
 const int inputs[4][2] = {{1,1},{1,0},{0,1},{0,0}};
@@ -100,8 +100,9 @@ void update(int *matrix, int *vector, int *buffer, int *counter){      //needs a
 
 void setInput(int caseNumber, int *vector){         //needs number of io-Case and pointer to first entry of statevector. Sets the input Values to those above...     
     for(int j = 0; j<popSize; j++){
-        for(int i = 0; i<numberOfInputs; i++){
-            *(vector + i + j*netSize) = inputs[caseNumber][i]; 
+        for(int i = 0; i<netSize; i++){
+            if(i<numberOfInputs) *(vector + i + j*netSize) = inputs[caseNumber][i];
+            else *(vector + i + j*netSize) = 1;
         }
     }    
 }
@@ -155,17 +156,18 @@ void  mutation(int *array){
 }
 
 void generation(int revolutions, int *matrix, double *fit){     //needs number of revolutions, pointer to matrix and pointer to fitness array. Then runs the whole thing.
-    int bufferVec[netSize][popSize] = {0};
     int cycleCounter[popSize] = {0};
     int correctOutputs[popSize] = {0};
 
+    int *stateVec = malloc(popSize*netSize*sizeof(int));
+    int *bufferVec = malloc(popSize*netSize*sizeof(int));
+
     for(int i = 0; i<numberOfCases; i++){
-        int stateVec[netSize][popSize] = {[0 ... (netSize-1)][0 ... (popSize-1)] = 1};
-        setInput(i, &stateVec[0][0]);
+        setInput(i, stateVec);
         for(int j = 0; j<revolutions; j++){
-            update(matrix, &stateVec[0][0], &bufferVec[0][0], &cycleCounter[0]);
+            update(matrix, stateVec, bufferVec, &cycleCounter[0]);
         }
-        checkOutput(i, &stateVec[0][0], &correctOutputs[0]);
+        checkOutput(i, stateVec, &correctOutputs[0]);
     }
 
     for(int n=0; n<popSize; n++){
@@ -181,35 +183,41 @@ int main(){
     startTime.tv_sec;
     startTime.tv_nsec;
     srand(time(NULL));
-    
-    &adjmat[0][0][0] = (*int)malloc(4*netSize*netSize*popSize);
+
+    int *adjaMat = calloc(popSize*netSize*netSize,sizeof(int));
+    for(int k=0; k<popSize; k++){
+        for(int j=numberOfInputs; j<netSize; j++){
+            for(int i=0; i<(netSize-numberOfOutputs); i++){
+                *(adjaMat+i+j*netSize+k*netSize*netSize) = randomInt();
+
+            }
+        }
+    }
     //int adjaMat[netSize][netSize][popSize] = {0};
-    
-    randomMat(&adjaMat[0][0][0]);
-    for(int n=0; n<2; n++){
+    for(int n=0; n<4; n++){
         double fitVec[popSize][2] = {0};
         enumArray(&fitVec[0][0]);
         
         for(int i=0; i<(int)(((double)netSize*netSize*popSize)*mutationRate); i++){
-            mutation(&adjaMat[0][0][0]);
+            mutation(adjaMat);
         }
 
-        printMat(&adjaMat[0][0][0]);
-        generation(10, &adjaMat[0][0][0], &fitVec[0][0]);
+        printMat(adjaMat);
+        generation(10, adjaMat, &fitVec[0][0]);
 
         double hi = hiEntry(&fitVec[0][0]);
         int hint = (int) hi;
         printf("\n\n%i \n", hint);
 
         for(int k; k<popSize; k++){
-            for(int j=0; j<netSize; j++){
-                for(int i=0; i<netSize; i++)
-                    adjaMat[i][j][k] = adjaMat[i][j][hint];
+            for(int j=numberOfInputs; j<netSize; j++){
+                for(int i=0; i<(netSize-numberOfOutputs); i++)
+                    *(adjaMat+i+j*netSize+k*netSize*netSize) = *(adjaMat+i+j*netSize+(hint-1)*netSize*netSize);
             }
         }
        
     }
-
+    free(adjaMat);
     struct timespec endTime;
     clock_gettime(CLOCK_REALTIME, &endTime);
     endTime.tv_sec;
