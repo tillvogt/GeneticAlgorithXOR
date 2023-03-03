@@ -3,7 +3,7 @@
 #include <time.h>
 #include<string.h>
 
-const int popSize = 20;
+const int popSize = 2;
 const int netSize = 5;
 
 const int inputs[4][2] = {{1,1},{1,0},{0,1},{0,0}};
@@ -12,6 +12,7 @@ const int outputs[4][1] = {{0},{1},{1},{0}};
 const int numberOfCases = 4;
 const int numberOfInputs = 2;
 const int numberOfOutputs = 1;
+const float mutationRate = 0.0;
 
 
 int heaviside(float n){ // >=0 -> 1; <0 -> 0
@@ -53,6 +54,7 @@ void printMat(int *matrix){     //needs adress to first entry of the matrix. The
             }
         }
     }
+    printf("\n");
 }
 
 void printVec(int *vector){     //needs adress to first entry of the matrix. Then prints out matrix
@@ -142,6 +144,16 @@ double hiEntry(double *array){      //returns the highest entry of the array
     return index;
 }
 
+void  mutation(int *array){
+    int rdm = rand()%((netSize-numberOfOutputs)*(netSize-numberOfInputs)*popSize);
+    int z = rdm/((netSize-numberOfInputs)*(netSize-numberOfOutputs));
+    int y = (rdm-z*(netSize-numberOfInputs)*(netSize-numberOfOutputs))/(netSize-numberOfOutputs);
+    int x = rdm%(netSize-numberOfOutputs);
+
+    *(array+x+(y+numberOfInputs)*netSize+z*netSize*netSize) = randomInt();
+
+}
+
 void generation(int revolutions, int *matrix, double *fit){     //needs number of revolutions, pointer to matrix and pointer to fitness array. Then runs the whole thing.
     int bufferVec[netSize][popSize] = {0};
     int cycleCounter[popSize] = {0};
@@ -170,19 +182,33 @@ int main(){
     startTime.tv_nsec;
     srand(time(NULL));
     
-    int adjaMat[netSize][netSize][popSize] = {0};
-    double fitVec[popSize][2] = {0};
-    enumArray(&fitVec[0][0]);
+    &adjmat[0][0][0] = (*int)malloc(4*netSize*netSize*popSize);
+    //int adjaMat[netSize][netSize][popSize] = {0};
     
     randomMat(&adjaMat[0][0][0]);
+    for(int n=0; n<2; n++){
+        double fitVec[popSize][2] = {0};
+        enumArray(&fitVec[0][0]);
+        
+        for(int i=0; i<(int)(((double)netSize*netSize*popSize)*mutationRate); i++){
+            mutation(&adjaMat[0][0][0]);
+        }
 
-    printMat(&adjaMat[0][0][0]);
-    printf("\n");
-    generation(10, &adjaMat[0][0][0], &fitVec[0][0]);
+        printMat(&adjaMat[0][0][0]);
+        generation(10, &adjaMat[0][0][0], &fitVec[0][0]);
 
-    double hi = hiEntry(&fitVec[0][0]);
+        double hi = hiEntry(&fitVec[0][0]);
+        int hint = (int) hi;
+        printf("\n\n%i \n", hint);
 
-    printf("%lf \n", hi);
+        for(int k; k<popSize; k++){
+            for(int j=0; j<netSize; j++){
+                for(int i=0; i<netSize; i++)
+                    adjaMat[i][j][k] = adjaMat[i][j][hint];
+            }
+        }
+       
+    }
 
     struct timespec endTime;
     clock_gettime(CLOCK_REALTIME, &endTime);
